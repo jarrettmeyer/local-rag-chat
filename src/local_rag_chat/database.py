@@ -1,13 +1,39 @@
+import json
+
 import psycopg
 
 
 class Database:
-    """Manages database connections and queries."""
-
     def __init__(self, host: str, port: str, dbname: str, user: str, password: str):
-        self.conn = psycopg.connect(
-            host=host, port=port, dbname=dbname, user=user, password=password
+        self.host = host
+        self.port = port
+        self.dbname = dbname
+        self.user = user
+        self.password = password
+
+    def open_connection(self):
+        return psycopg.connect(
+            host=self.host,
+            port=self.port,
+            dbname=self.dbname,
+            user=self.user,
+            password=self.password,
         )
+
+    def get_relevant_chunks_by_embedding(self, embedding: list, top_k: int = 5):
+        """Return the top_k most similar chunks to the given embedding."""
+        with self.open_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT content FROM chunks
+                    JOIN embeddings ON chunks.chunk_id = embeddings.chunk_id
+                    ORDER BY embeddings.vector <#> %s::vector ASC
+                    LIMIT %s
+                    """,
+                    (embedding, top_k),
+                )
+                return [row[0] for row in cur.fetchall()]
 
     def insert_document(
         self, doc_id: str, file_name: str, chunks: list, embeddings: list
@@ -17,9 +43,7 @@ class Database:
         chunks: list of dicts with keys chunk_id, content, page_number, chunk_number, metadata
         embeddings: list of dicts with keys embedding_id, chunk_id, vector
         """
-        import json
-
-        with self.conn as conn:
+        with self.open_connection() as conn:
             with conn.cursor() as cur:
                 # Insert doc
                 cur.execute(
@@ -57,4 +81,3 @@ class Database:
                         """,
                         (emb["embedding_id"], emb["chunk_id"], emb["vector"]),
                     )
-

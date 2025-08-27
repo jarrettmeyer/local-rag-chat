@@ -1,11 +1,13 @@
 import os
 from typing import Optional
 
+
 import typer
 from dotenv import load_dotenv
 
 from .database import Database
 from .document_processor import DocumentProcessor
+from .chat_client import ChatClient
 
 
 load_dotenv()
@@ -27,7 +29,6 @@ def ingest(
     file: str = typer.Argument(),
 ):
     """Ingest a PDF file and store its chunks and embeddings in the database."""
-    # Initialize database connection from environment
     db = Database(
         host=get_env_var("POSTGRES_HOST"),
         port=get_env_var("POSTGRES_PORT"),
@@ -39,5 +40,19 @@ def ingest(
     processor.ingest_pdf(file, db)
 
 
+@app.command(name="chat")
+def chat():
+    """Start a chat prompt (default command)."""
+    db = Database(
+        host=get_env_var("POSTGRES_HOST"),
+        port=get_env_var("POSTGRES_PORT"),
+        dbname=get_env_var("POSTGRES_DB"),
+        user=get_env_var("POSTGRES_USER"),
+        password=get_env_var("POSTGRES_PASSWORD"),
+    )
+    chat_client = ChatClient()
+    chat_client.chat_loop(db)
+
+
 if __name__ == "__main__":
-    app()
+    app(prog_name="local-rag-chat")
