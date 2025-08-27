@@ -7,3 +7,6 @@ __pycache__/
 
 # Environment
 .env
+
+# Demo files
+docs/*.pdf
