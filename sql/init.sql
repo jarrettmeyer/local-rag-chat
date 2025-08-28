@@ -1,4 +1,5 @@
 -- Uncomment and use with caution! These will drop all tables, resetting the database.
+DROP TABLE IF EXISTS permissions;
 DROP TABLE IF EXISTS embeddings;
 DROP TABLE IF EXISTS chunks;
 DROP TABLE IF EXISTS docs;
@@ -26,4 +27,11 @@ CREATE TABLE IF NOT EXISTS embeddings (
 	embedding_id UUID PRIMARY KEY,
 	chunk_id UUID REFERENCES chunks(chunk_id) ON DELETE CASCADE,
 	vector VECTOR(768)
+);
+
+
+CREATE TABLE IF NOT EXISTS permissions (
+	user_id TEXT NOT NULL,
+	doc_id UUID NOT NULL REFERENCES docs(doc_id) ON DELETE CASCADE,
+	PRIMARY KEY (user_id, doc_id)
 );
