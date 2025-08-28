@@ -16,5 +16,6 @@
 ## Package Documentation
 
 - [psycopg](https://www.psycopg.org/psycopg3/docs/): PostgreSQL operations
-- [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/index.html)
+- [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/index.html): PDF
+- [tqdm](https://github.com/tqdm/tqdm): progress bar
 - [typer](https://typer.tiangolo.com/): for building CLI applications
