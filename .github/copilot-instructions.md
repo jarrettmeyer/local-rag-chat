@@ -16,4 +16,5 @@
 ## Package Documentation
 
 - [psycopg](https://www.psycopg.org/psycopg3/docs/): PostgreSQL operations
+- [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/index.html)
 - [typer](https://typer.tiangolo.com/): for building CLI applications
