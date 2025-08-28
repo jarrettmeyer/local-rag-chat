@@ -19,7 +19,7 @@ class DocumentProcessor:
     def __init__(self):
         self.chunk_size = 800
 
-    def ingest_pdf(self, file_path: str, db: Database):
+    def ingest_pdf(self, file_path: str, db: Database) -> Doc:
         """Ingest a PDF, chunk it, generate embeddings, and save to the database atomically."""
         pdf = fitz.open(file_path)
         doc_id = uuid.uuid4()
@@ -49,9 +49,7 @@ class DocumentProcessor:
                 metadata = {"source": file_name, "page": page_num + 1}
                 vector = chat_client.get_embedding(chunk_text)
                 embedding = Embedding(
-                    embedding_id=uuid.uuid4(),
-                    chunk_id=chunk_id,
-                    vector=vector
+                    embedding_id=uuid.uuid4(), chunk_id=chunk_id, vector=vector
                 )
                 chunk_obj = Chunk(
                     chunk_id=chunk_id,
@@ -59,13 +57,12 @@ class DocumentProcessor:
                     page_number=page_num + 1,
                     chunk_number=chunk_num,
                     metadata=metadata,
-                    embedding=embedding
+                    embedding=embedding,
                 )
                 chunk_objs.append(chunk_obj)
 
-        doc_obj = Doc(
-            doc_id=doc_id,
-            file_name=file_name,
-            chunks=chunk_objs
-        )
+        doc_obj = Doc(doc_id=doc_id, file_name=file_name, chunks=chunk_objs)
+
         db.insert_document(doc_obj)
+
+        return doc_obj

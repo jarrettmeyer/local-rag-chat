@@ -29,17 +29,8 @@ class Doc(BaseModel):
 
 
 class Database:
+    """Encapsulates all database operations."""
 
-    def purge_document(self, doc_id):
-        """Delete a document and all related chunks and embeddings by doc_id."""
-        with self.open_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    DELETE FROM docs WHERE doc_id = %s
-                    """,
-                    (str(doc_id),)
-                )
     def __init__(self, host: str, port: str, dbname: str, user: str, password: str):
         self.host = host
         self.port = port
@@ -47,18 +38,9 @@ class Database:
         self.user = user
         self.password = password
 
-    def open_connection(self):
-        return psycopg.connect(
-            host=self.host,
-            port=self.port,
-            dbname=self.dbname,
-            user=self.user,
-            password=self.password,
-        )
-
     def get_relevant_chunks_by_embedding(self, embedding: list, top_k: int = 5):
         """Return the top_k most similar chunks to the given embedding."""
-        with self.open_connection() as conn:
+        with self._open_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -75,7 +57,7 @@ class Database:
         """
         Insert a document, its chunks, and embeddings in a single transaction.
         """
-        with self.open_connection() as conn:
+        with self._open_connection() as conn:
             with conn.cursor() as cur:
                 # Insert doc
                 cur.execute(
@@ -112,3 +94,37 @@ class Database:
                         """,
                         (emb.embedding_id, emb.chunk_id, emb.vector),
                     )
+
+    def list_documents(self) -> List["Doc"]:
+        """Return a list of Doc objects for all documents."""
+        from uuid import UUID
+
+        docs = []
+        with self._open_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT doc_id, file_name FROM docs ORDER BY file_name")
+                for row in cur.fetchall():
+                    docs.append(
+                        Doc(doc_id=UUID(str(row[0])), file_name=row[1], chunks=[])
+                    )
+        return docs
+
+    def purge_document(self, doc_id):
+        """Delete a document and all related chunks and embeddings by doc_id."""
+        with self._open_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    DELETE FROM docs WHERE doc_id = %s
+                    """,
+                    (str(doc_id),),
+                )
+
+    def _open_connection(self):
+        return psycopg.connect(
+            host=self.host,
+            port=self.port,
+            dbname=self.dbname,
+            user=self.user,
+            password=self.password,
+        )
