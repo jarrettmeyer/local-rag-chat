@@ -1,9 +1,10 @@
+from tqdm import tqdm
 import os
 import re
 
 import uuid
 
-import fitz  # PyMuPDF
+import pymupdf
 
 from .chat_client import ChatClient
 from .database import Database, Doc, Chunk, Embedding
@@ -20,15 +21,18 @@ class DocumentProcessor:
         self.chunk_size = 800
 
     def ingest_pdf(self, file_path: str, db: Database) -> Doc:
-        """Ingest a PDF, chunk it, generate embeddings, and save to the database atomically."""
-        pdf = fitz.open(file_path)
+        """Ingest a PDF, chunk it, generate embeddings, and save to the database."""
+        print(f"\nReading {file_path}...")
+
+        pdf = pymupdf.open(file_path)
         doc_id = uuid.uuid4()
         file_name = os.path.basename(file_path)
 
+        # Create a new ChatClient to generate embeddings
         chat_client = ChatClient()
 
         chunk_objs = []
-        for page_num in range(len(pdf)):
+        for page_num in tqdm(range(len(pdf)), desc="Processing pages", unit="page"):
             page = pdf[page_num]
             text = page.get_text()  # type: ignore
             sentences = re.split(r"(?<=[.!?]) +", text)
@@ -61,8 +65,9 @@ class DocumentProcessor:
                 )
                 chunk_objs.append(chunk_obj)
 
+        print("Inserting database records.")
         doc_obj = Doc(doc_id=doc_id, file_name=file_name, chunks=chunk_objs)
-
         db.insert_document(doc_obj)
+        print("Done!")
 
         return doc_obj
