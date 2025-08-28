@@ -24,16 +24,19 @@ class DocumentProcessor:
         """Ingest a PDF, chunk it, generate embeddings, and save to the database."""
         print(f"\nReading {file_path}...")
 
-        pdf = pymupdf.open(file_path)
+        # Use PyMuPDF to open the file.
+        pdf_handle = pymupdf.open(file_path)
         doc_id = uuid.uuid4()
         file_name = os.path.basename(file_path)
 
         # Create a new ChatClient to generate embeddings
-        chat_client = ChatClient()
+        chat_client = ChatClient(db)
 
         chunk_objs = []
-        for page_num in tqdm(range(len(pdf)), desc="Processing pages", unit="page"):
-            page = pdf[page_num]
+        for page_num in tqdm(
+            range(len(pdf_handle)), desc="Processing pages", unit="page"
+        ):
+            page = pdf_handle[page_num]
             text = page.get_text()  # type: ignore
             sentences = re.split(r"(?<=[.!?]) +", text)
             chunks = []
@@ -69,5 +72,7 @@ class DocumentProcessor:
         doc_obj = Doc(doc_id=doc_id, file_name=file_name, chunks=chunk_objs)
         db.insert_document(doc_obj)
         print("Done!")
+
+        pdf_handle.close()
 
         return doc_obj
