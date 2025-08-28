@@ -14,3 +14,4 @@
 ## Package Documentation
 
 - [psycopg](https://www.psycopg.org/psycopg3/docs/): PostgreSQL operations
+- [typer](https://typer.tiangolo.com/): for building CLI applications
