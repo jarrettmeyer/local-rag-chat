@@ -2,7 +2,7 @@ import os
 from typing import Optional
 
 from dotenv import load_dotenv
-from typer import Argument, Typer
+from typer import Argument, Option, Typer
 
 from .chat_client import ChatClient
 from .database import Database
@@ -37,11 +37,28 @@ def _get_database() -> Database:
 
 
 @app.command(name="chat")
-def chat():
-    """Start a chat prompt (default command)."""
+def chat(user: str = Option(None, help="User ID for permissions filtering")):
+    """Start a chat prompt (default command). Optionally filter by user permissions."""
+
+    # If user is not set, pull from environment
+    if not user:
+        user = _get_env_var("USER", None)
+
     db = _get_database()
-    chat_client = ChatClient()
-    chat_client.chat_loop(db)
+    chat_client = ChatClient(db)
+    chat_client.chat_loop(user)
+
+
+@app.command(name="grant")
+def grant(
+    user: str = Argument(..., help="User ID to grant permission to"),
+    doc_id: str = Argument(..., help="Document ID to grant access for"),
+):
+    """Grant a user access to a document."""
+    db = _get_database()
+    db.grant_permission(user, doc_id)
+
+    print(f"\nGranted user {user} access to document {doc_id}.", end="\n\n")
 
 
 @app.command(name="ingest")
@@ -76,6 +93,17 @@ def purge_document(doc_id: str = Argument(..., help="Document ID to purge")):
     db.purge_document(doc_id)
 
     print(f"\nPurged document {doc_id} and all related data.", end="\n\n")
+
+
+@app.command(name="revoke")
+def revoke(
+    user: str = Argument(..., help="User ID to revoke permission from"),
+    doc_id: str = Argument(..., help="Document ID to revoke access for"),
+):
+    """Revoke a user's access to a document."""
+    db = _get_database()
+    db.revoke_permission(user, doc_id)
+    print(f"Revoked user {user}'s access to document {doc_id}.")
 
 
 if __name__ == "__main__":

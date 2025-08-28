@@ -38,20 +38,39 @@ class Database:
         self.user = user
         self.password = password
 
-    def get_relevant_chunks_by_embedding(self, embedding: list, top_k: int = 5):
-        """Return the top_k most similar chunks to the given embedding."""
+    def get_relevant_chunks_by_embedding(
+        self, embedding: list, user_id: str, top_k: int = 5
+    ):
+        """Return the top_k most similar chunks to the given embedding, filtered by user permissions if user_id is provided."""
         with self._open_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT content FROM chunks
-                    JOIN embeddings ON chunks.chunk_id = embeddings.chunk_id
+                    SELECT chunks.content
+                    FROM chunks
+                    INNER JOIN embeddings ON chunks.chunk_id = embeddings.chunk_id
+                    INNER JOIN permissions ON chunks.doc_id = permissions.doc_id
+                    WHERE permissions.user_id = %s
                     ORDER BY embeddings.vector <#> %s::vector ASC
                     LIMIT %s
                     """,
-                    (embedding, top_k),
+                    (user_id, embedding, top_k),
                 )
+
                 return [row[0] for row in cur.fetchall()]
+
+    def grant_permission(self, user_id: str, doc_id: str):
+        """Grant a user access to a document."""
+        with self._open_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO permissions (user_id, doc_id)
+                    VALUES (%s, %s)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (user_id, doc_id),
+                )
 
     def insert_document(self, doc: Doc):
         """
@@ -118,6 +137,17 @@ class Database:
                     DELETE FROM docs WHERE doc_id = %s
                     """,
                     (str(doc_id),),
+                )
+
+    def revoke_permission(self, user_id: str, doc_id: str):
+        """Revoke a user's access to a document."""
+        with self._open_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    DELETE FROM permissions WHERE user_id = %s AND doc_id = %s
+                    """,
+                    (user_id, doc_id),
                 )
 
     def _open_connection(self):
