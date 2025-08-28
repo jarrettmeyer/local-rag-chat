@@ -1,6 +1,31 @@
 import json
+from typing import Any, Dict, List
+from uuid import UUID, uuid4
 
 import psycopg
+from pydantic import BaseModel, Field
+
+
+# Pydantic models
+class Embedding(BaseModel):
+    embedding_id: UUID = Field(default_factory=uuid4)
+    chunk_id: UUID
+    vector: List[float]
+
+
+class Chunk(BaseModel):
+    chunk_id: UUID = Field(default_factory=uuid4)
+    content: str
+    page_number: int
+    chunk_number: int
+    metadata: Dict[str, Any]
+    embedding: Embedding
+
+
+class Doc(BaseModel):
+    doc_id: UUID = Field(default_factory=uuid4)
+    file_name: str
+    chunks: List[Chunk] = Field(default_factory=lambda: [])
 
 
 class Database:
@@ -35,13 +60,9 @@ class Database:
                 )
                 return [row[0] for row in cur.fetchall()]
 
-    def insert_document(
-        self, doc_id: str, file_name: str, chunks: list, embeddings: list
-    ):
+    def insert_document(self, doc: Doc):
         """
         Insert a document, its chunks, and embeddings in a single transaction.
-        chunks: list of dicts with keys chunk_id, content, page_number, chunk_number, metadata
-        embeddings: list of dicts with keys embedding_id, chunk_id, vector
         """
         with self.open_connection() as conn:
             with conn.cursor() as cur:
@@ -52,10 +73,10 @@ class Database:
                     VALUES (%s, %s)
                     ON CONFLICT (doc_id) DO NOTHING
                     """,
-                    (doc_id, file_name),
+                    (str(doc.doc_id), doc.file_name),
                 )
-                # Insert chunks
-                for chunk in chunks:
+                # Insert chunks and embeddings
+                for chunk in doc.chunks:
                     cur.execute(
                         """
                         INSERT INTO public.chunks (chunk_id, doc_id, content, page_number, chunk_number, metadata)
@@ -63,21 +84,20 @@ class Database:
                         ON CONFLICT (chunk_id) DO NOTHING
                         """,
                         (
-                            chunk["chunk_id"],
-                            doc_id,
-                            chunk["content"],
-                            chunk["page_number"],
-                            chunk["chunk_number"],
-                            json.dumps(chunk["metadata"]),
+                            chunk.chunk_id,
+                            doc.doc_id,
+                            chunk.content,
+                            chunk.page_number,
+                            chunk.chunk_number,
+                            json.dumps(chunk.metadata),
                         ),
                     )
-                # Insert embeddings
-                for emb in embeddings:
+                    emb = chunk.embedding
                     cur.execute(
                         """
                         INSERT INTO public.embeddings (embedding_id, chunk_id, vector)
                         VALUES (%s, %s, %s)
                         ON CONFLICT (embedding_id) DO NOTHING
                         """,
-                        (emb["embedding_id"], emb["chunk_id"], emb["vector"]),
+                        (emb.embedding_id, emb.chunk_id, emb.vector),
                     )

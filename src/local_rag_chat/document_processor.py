@@ -1,11 +1,12 @@
 import os
 import re
+
 import uuid
 
 import fitz  # PyMuPDF
 import requests
 
-from .database import Database
+from .database import Database, Doc, Chunk, Embedding
 
 
 class DocumentProcessor:
@@ -36,15 +37,13 @@ class DocumentProcessor:
 
     def ingest_pdf(self, file_path: str, db: Database):
         """Ingest a PDF, chunk it, generate embeddings, and save to the database atomically."""
-        doc = fitz.open(file_path)
-        doc_id = str(uuid.uuid4())
+        pdf = fitz.open(file_path)
+        doc_id = uuid.uuid4()
         file_name = os.path.basename(file_path)
 
-        all_chunks = []
-        all_embeddings = []
-
-        for page_num in range(len(doc)):
-            page = doc[page_num]
+        chunk_objs = []
+        for page_num in range(len(pdf)):
+            page = pdf[page_num]
             text = page.get_text()  # type: ignore
             sentences = re.split(r"(?<=[.!?]) +", text)
             chunks = []
@@ -59,25 +58,28 @@ class DocumentProcessor:
             if current:
                 chunks.append(current.strip())
 
-            for chunk_num, chunk in enumerate(chunks):
-                chunk_id = str(uuid.uuid4())
+            for chunk_num, chunk_text in enumerate(chunks):
+                chunk_id = uuid.uuid4()
                 metadata = {"source": file_name, "page": page_num + 1}
-                all_chunks.append(
-                    {
-                        "chunk_id": chunk_id,
-                        "content": chunk,
-                        "page_number": page_num + 1,
-                        "chunk_number": chunk_num,
-                        "metadata": metadata,
-                    }
+                vector = self.get_embedding(chunk_text)
+                embedding = Embedding(
+                    embedding_id=uuid.uuid4(),
+                    chunk_id=chunk_id,
+                    vector=vector
                 )
-                vector = self.get_embedding(chunk)
-                all_embeddings.append(
-                    {
-                        "embedding_id": str(uuid.uuid4()),
-                        "chunk_id": chunk_id,
-                        "vector": vector,
-                    }
+                chunk_obj = Chunk(
+                    chunk_id=chunk_id,
+                    content=chunk_text,
+                    page_number=page_num + 1,
+                    chunk_number=chunk_num,
+                    metadata=metadata,
+                    embedding=embedding
                 )
+                chunk_objs.append(chunk_obj)
 
-        db.insert_document(doc_id, file_name, all_chunks, all_embeddings)
+        doc_obj = Doc(
+            doc_id=doc_id,
+            file_name=file_name,
+            chunks=chunk_objs
+        )
+        db.insert_document(doc_obj)

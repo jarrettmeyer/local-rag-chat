@@ -24,18 +24,23 @@ def get_env_var(name: str, default: Optional[str] = None) -> str:
     return value
 
 
+def get_database() -> Database:
+    db = Database(
+        host=get_env_var("POSTGRES_HOST", "localhost"),
+        port=get_env_var("POSTGRES_PORT", "5432"),
+        dbname=get_env_var("POSTGRES_DB"),
+        user=get_env_var("POSTGRES_USER"),
+        password=get_env_var("POSTGRES_PASSWORD"),
+    )
+    return db
+
+
 @app.command(name="ingest")
 def ingest(
     file: str = typer.Argument(),
 ):
     """Ingest a PDF file and store its chunks and embeddings in the database."""
-    db = Database(
-        host=get_env_var("POSTGRES_HOST"),
-        port=get_env_var("POSTGRES_PORT"),
-        dbname=get_env_var("POSTGRES_DB"),
-        user=get_env_var("POSTGRES_USER"),
-        password=get_env_var("POSTGRES_PASSWORD"),
-    )
+    db = get_database()
     processor = DocumentProcessor()
     processor.ingest_pdf(file, db)
 
@@ -43,13 +48,7 @@ def ingest(
 @app.command(name="chat")
 def chat():
     """Start a chat prompt (default command)."""
-    db = Database(
-        host=get_env_var("POSTGRES_HOST"),
-        port=get_env_var("POSTGRES_PORT"),
-        dbname=get_env_var("POSTGRES_DB"),
-        user=get_env_var("POSTGRES_USER"),
-        password=get_env_var("POSTGRES_PASSWORD"),
-    )
+    db = get_database()
     chat_client = ChatClient()
     chat_client.chat_loop(db)
 
