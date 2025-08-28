@@ -1,14 +1,12 @@
 import os
 from typing import Optional
 
-
 import typer
 from dotenv import load_dotenv
 
+from .chat_client import ChatClient
 from .database import Database
 from .document_processor import DocumentProcessor
-from .chat_client import ChatClient
-
 
 load_dotenv()
 
@@ -43,6 +41,15 @@ def ingest(
     db = get_database()
     processor = DocumentProcessor()
     processor.ingest_pdf(file, db)
+    print(f"Ingested document {file}.")
+
+
+@app.command(name="purge")
+def purge(doc_id: str = typer.Argument(..., help="Document UUID to purge")):
+    """Delete a document and all related data from the database."""
+    db = get_database()
+    db.purge_document(doc_id)
+    print(f"Purged document {doc_id} and all related data.")
 
 
 @app.command(name="chat")

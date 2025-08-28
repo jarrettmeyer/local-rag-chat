@@ -29,6 +29,17 @@ class Doc(BaseModel):
 
 
 class Database:
+
+    def purge_document(self, doc_id):
+        """Delete a document and all related chunks and embeddings by doc_id."""
+        with self.open_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    DELETE FROM docs WHERE doc_id = %s
+                    """,
+                    (str(doc_id),)
+                )
     def __init__(self, host: str, port: str, dbname: str, user: str, password: str):
         self.host = host
         self.port = port

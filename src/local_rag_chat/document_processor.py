@@ -4,8 +4,8 @@ import re
 import uuid
 
 import fitz  # PyMuPDF
-import requests
 
+from .chat_client import ChatClient
 from .database import Database, Doc, Chunk, Embedding
 
 
@@ -17,29 +17,15 @@ class DocumentProcessor:
     """
 
     def __init__(self):
-        self.embedding_model = "nomic-embed-text"
-        self.ollama_base_url = "http://localhost:11434/api"
         self.chunk_size = 800
-
-    @property
-    def ollama_embeddings_url(self) -> str:
-        return f"{self.ollama_base_url}/embeddings"
-
-    def get_embedding(self, text: str) -> list:
-        """Call Ollama's nomic-embed-text model to get an embedding for the given text."""
-        payload = {"model": self.embedding_model, "prompt": text}
-        response = requests.post(self.ollama_embeddings_url, json=payload)
-        response.raise_for_status()
-        data = response.json()
-        return data["embedding"]
-
-    # Embedding generation will use Ollama's nomic-embed-text model via API call.
 
     def ingest_pdf(self, file_path: str, db: Database):
         """Ingest a PDF, chunk it, generate embeddings, and save to the database atomically."""
         pdf = fitz.open(file_path)
         doc_id = uuid.uuid4()
         file_name = os.path.basename(file_path)
+
+        chat_client = ChatClient()
 
         chunk_objs = []
         for page_num in range(len(pdf)):
@@ -61,7 +47,7 @@ class DocumentProcessor:
             for chunk_num, chunk_text in enumerate(chunks):
                 chunk_id = uuid.uuid4()
                 metadata = {"source": file_name, "page": page_num + 1}
-                vector = self.get_embedding(chunk_text)
+                vector = chat_client.get_embedding(chunk_text)
                 embedding = Embedding(
                     embedding_id=uuid.uuid4(),
                     chunk_id=chunk_id,
