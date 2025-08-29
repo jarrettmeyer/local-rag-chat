@@ -51,14 +51,14 @@ def chat(user: str = Option(None, help="User ID for permissions filtering")):
 
 @app.command(name="grant")
 def grant(
-    user: str = Argument(..., help="User ID to grant permission to"),
+    user_id: str = Argument(..., help="User ID to grant permission to"),
     doc_id: str = Argument(..., help="Document ID to grant access for"),
 ):
     """Grant a user access to a document."""
     db = _get_database()
-    db.grant_permission(user, doc_id)
+    db.grant_permission(user_id, doc_id)
 
-    print(f"\nGranted user {user} access to document {doc_id}.", end="\n\n")
+    print(f"\nGranted user {user_id} access to document {doc_id}.", end="\n\n")
 
 
 @app.command(name="ingest")
@@ -97,13 +97,13 @@ def purge_document(doc_id: str = Argument(..., help="Document ID to purge")):
 
 @app.command(name="revoke")
 def revoke(
-    user: str = Argument(..., help="User ID to revoke permission from"),
+    user_id: str = Argument(..., help="User ID to revoke permission from"),
     doc_id: str = Argument(..., help="Document ID to revoke access for"),
 ):
     """Revoke a user's access to a document."""
     db = _get_database()
-    db.revoke_permission(user, doc_id)
-    print(f"Revoked user {user}'s access to document {doc_id}.")
+    db.revoke_permission(user_id, doc_id)
+    print(f"Revoked user {user_id}'s access to document {doc_id}.")
 
 
 if __name__ == "__main__":

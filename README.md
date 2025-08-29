@@ -21,7 +21,10 @@ uv sync
 
 ```bash
 uv run local-rag-chat ingest FILE
+# FILE     path to PDF file, ex: /path/to/my.pdf
 ```
+
+Ingest a PDF document.
 
 ### `list`
 
@@ -32,7 +35,9 @@ uv run local-rag-chat list
 ### `chat`
 
 ```bash
-uv run local-rag-chat chat
+uv run local-rag-chat chat --user USER_ID
+# USER_ID  (optional) user unique identifier, ex: TEST_USER
+#          If USER_ID is not given, then the "USER" environment variable is used.
 ```
 
 ### `purge`
@@ -41,3 +46,6 @@ uv run local-rag-chat chat
 uv run local-rag-chat purge DOC_ID
 ```
 
+### `grant`
+
+### `revoke`
